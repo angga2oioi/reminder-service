@@ -5,7 +5,7 @@ const {
   SENT_REMINDER_STATUS, PENDING_REMINDER_STATUS,
 } = require('reminder-service-utils/constant');
 const mongoose = require('../provider/mongoose');
-const { toJSON, paginate } = require('./plugins');
+const { toJSON, paginate, aggregatePaginate } = require('./plugins');
 
 const { ObjectId, String } = mongoose.Schema.Types;
 
@@ -49,6 +49,7 @@ reminderSchema.index({ updatedAt: 1 });
 // add plugin that converts mongoose to json
 reminderSchema.plugin(toJSON);
 reminderSchema.plugin(paginate);
+reminderSchema.plugin(aggregatePaginate);
 
 const reminder = mongoose.model('reminder', reminderSchema);
 

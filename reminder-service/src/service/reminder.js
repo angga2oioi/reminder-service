@@ -1,5 +1,5 @@
 const { Validator } = require('node-input-validator');
-const { HttpError, sanitizeObject } = require('reminder-service-utils/functions');
+const { HttpError, sanitizeObject, parseSortBy } = require('reminder-service-utils/functions');
 const {
   BAD_REQUEST_ERR_CODE, PENDING_REMINDER_STATUS, NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE, SERVICE_UNAVAILABLE_ERR_CODE, NONE_REMINDER_REPEAT, SENT_REMINDER_STATUS, ANNUAL_REMINDER_REPEAT, MONTHLY_REMINDER_REPEAT, WEEKLY_REMINDER_REPEAT, QUARTERLY_REMINDER_REPEAT, DAILY_REMINDER_REPEAT,
 } = require('reminder-service-utils/constant');
@@ -285,10 +285,59 @@ const buildReminderSearchQuery = (params) => {
 
 exports.paginateReminder = async (params, sortBy = 'createdAt:desc', limit = 10, page = 1) => {
   const query = buildReminderSearchQuery(params);
+  const sort = parseSortBy(sortBy);
 
-  const list = await Reminders.paginate(query, { sortBy, limit, page });
-  list.results = list?.results?.map((n) => n?.toJSON());
-  return list;
+  const aggregate = Reminders.aggregate([
+    {
+      $match: query,
+    },
+    {
+      $lookup: {
+        from: 'scheduledreminders',
+        let: {
+          reminder: '$_id',
+        },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  {
+                    $eq: ['$reminder', '$$reminder'],
+                  },
+                  {
+                    $eq: ['$status', PENDING_REMINDER_STATUS],
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        as: 'schedules',
+      },
+    },
+    {
+      $sort: sort,
+    },
+  ]);
+
+  const options = { page, limit };
+
+  const results = await Reminders.aggregatePaginate(aggregate, options);
+
+  return {
+    results: results.docs.map((n) => {
+      const doc = {
+        ...n,
+        id: n?._id,
+      };
+      delete doc._id;
+      return doc;
+    }),
+    page,
+    totalResults: results.total,
+    totalPages: results.pages,
+  };
 };
 
 const buildScheduledReminderSearchQuery = (params) => {

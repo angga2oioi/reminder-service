@@ -18,9 +18,10 @@ wsServer.on('socket-error', (e) => {
 const {
   PAGINATE_REMINDER_RPC_ROUTE,
   CREATE_REMINDER_RPC_ROUTE,
+  FIND_REMINDER_BY_TITLE_RPC_ROUTE,
 } = require('reminder-service-utils/constant');
 
-const { paginateReminder, createReminder } = require('../service/reminder');
+const { paginateReminder, createReminder, findReminderByTitle } = require('../service/reminder');
 
 wsServer.register(PAGINATE_REMINDER_RPC_ROUTE, async ({
   query, sortBy, limit, page,
@@ -37,6 +38,16 @@ wsServer.register(CREATE_REMINDER_RPC_ROUTE, async ({
 }) => {
   try {
     return await createReminder(params);
+  } catch (e) {
+    return null;
+  }
+});
+
+wsServer.register(FIND_REMINDER_BY_TITLE_RPC_ROUTE, async ({
+  title, userId,
+}) => {
+  try {
+    return await findReminderByTitle(title, userId);
   } catch (e) {
     return null;
   }

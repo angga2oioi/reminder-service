@@ -69,6 +69,17 @@ exports.findReminderById = async (id) => {
   return raw?.toJSON();
 };
 
+exports.findReminderByTitle = async (title, userId) => {
+  const raw = await Reminders.findOne({
+    title,
+    user: new ObjectId(userId),
+  });
+  if (!raw) {
+    return null;
+  }
+  return raw?.toJSON();
+};
+
 exports.updateReminder = async (id, params) => {
   const reminder = await this.findReminderById(id);
   if (!reminder) {

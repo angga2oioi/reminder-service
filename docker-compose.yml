@@ -50,6 +50,17 @@ services:
             max-file: "5"
             max-size: "1m"
 
+  gateway_service:
+    container_name: gateway_service
+    build:
+      context: ./gateway-service
+    network_mode: "host"
+    logging:
+        driver: "json-file"
+        options:
+            max-file: "5"
+            max-size: "1m"
+
   rabbit_mq:
     image: rabbitmq:3.9-management
   mongodb:

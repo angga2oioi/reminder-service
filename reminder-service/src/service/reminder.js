@@ -90,6 +90,7 @@ exports.updateReminder = async (id, params) => {
     title: 'required',
     message: 'required',
     repeat: 'required',
+    schedule: 'required',
   });
 
   const matched = await v.check();
@@ -275,10 +276,6 @@ const buildReminderSearchQuery = (params) => {
     query.user = new ObjectId(params?.user);
   }
 
-  if (params?.status) {
-    query.status = params?.status;
-  }
-
   if (params?.repeat) {
     query.repeat = params?.repeat;
   }
@@ -290,6 +287,28 @@ exports.paginateReminder = async (params, sortBy = 'createdAt:desc', limit = 10,
   const query = buildReminderSearchQuery(params);
 
   const list = await Reminders.paginate(query, { sortBy, limit, page });
+  list.results = list?.results?.map((n) => n?.toJSON());
+  return list;
+};
+
+const buildScheduledReminderSearchQuery = (params) => {
+  const query = {};
+
+  if (params?.reminder) {
+    query.reminder = new ObjectId(params?.reminder);
+  }
+
+  if (params?.status) {
+    query.status = params?.status;
+  }
+
+  return query;
+};
+
+exports.paginateScheduledReminder = async (params, sortBy = 'createdAt:desc', limit = 10, page = 1) => {
+  const query = buildScheduledReminderSearchQuery(params);
+
+  const list = await ScheduledReminders.paginate(query, { sortBy, limit, page });
   list.results = list?.results?.map((n) => n?.toJSON());
   return list;
 };

@@ -1,6 +1,6 @@
 // @ts-check
 
-const { PAGINATE_REMINDER_RPC_ROUTE, CREATE_REMINDER_MQ_QUEUE } = require('reminder-service-utils/constant');
+const { PAGINATE_REMINDER_RPC_ROUTE, CREATE_REMINDER_MQ_QUEUE, FIND_REMINDER_BY_TITLE_RPC_ROUTE } = require('reminder-service-utils/constant');
 
 const WebSocket = require('rpc-websockets').Client;
 
@@ -29,3 +29,4 @@ exports.paginateReminder = async (query, sortBy, limit, page) => ws.call(PAGINAT
 });
 
 exports.createReminder = async (params) => ws.call(CREATE_REMINDER_MQ_QUEUE, { params });
+exports.findReminderByTitle = async (title, userId) => ws.call(FIND_REMINDER_BY_TITLE_RPC_ROUTE, { title, userId });

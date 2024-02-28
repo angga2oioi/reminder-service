@@ -4,13 +4,13 @@ const {
   BAD_REQUEST_ERR_CODE, PENDING_REMINDER_STATUS, NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE, SERVICE_UNAVAILABLE_ERR_CODE, NONE_REMINDER_REPEAT, SENT_REMINDER_STATUS, ANNUAL_REMINDER_REPEAT, MONTHLY_REMINDER_REPEAT, WEEKLY_REMINDER_REPEAT, QUARTERLY_REMINDER_REPEAT, DAILY_REMINDER_REPEAT,
 } = require('reminder-service-utils/constant');
 const mongoose = require('mongoose');
+const moment = require('moment');
 const { findUserById } = require('../provider/auth.service');
-const { Reminders } = require('../model');
+const { Reminders, ScheduledReminders } = require('../model');
 const { submitSendReminder } = require('../provider/rabbitmq.producer');
 const { sendEmail } = require('../provider/mailer');
 
 const { ObjectId } = mongoose.Schema.Types;
-const moment = require('moment');
 
 exports.createReminder = async (params) => {
   const v = new Validator(params, {
@@ -35,9 +35,17 @@ exports.createReminder = async (params) => {
     throw HttpError(BAD_REQUEST_ERR_CODE, `${params?.schedule} is not a valid datetime`);
   }
 
+  const testReminder = await Reminders.findOne({
+    user: new ObjectId(params?.user),
+    title: params?.title,
+  });
+
+  if (testReminder) {
+    throw HttpError(BAD_REQUEST_ERR_CODE, `${params?.title} already exists`);
+  }
+
   const payload = {
     user: new ObjectId(params?.user),
-    schedule: new Date(params?.schedule),
     title: params?.title,
     message: params?.message,
     repeat: params?.repeat,
@@ -45,13 +53,29 @@ exports.createReminder = async (params) => {
 
   const raw = await Reminders.create(sanitizeObject(payload));
 
+  await ScheduledReminders.create({
+    reminder: new ObjectId(raw?._id?.toString()),
+    schedule: new Date(params?.schedule),
+  });
+
   return raw?.toJSON();
 };
 
-exports.updateReminder = async (params) => {
+exports.findReminderById = async (id) => {
+  const raw = await Reminders.findById(id);
+  if (!raw) {
+    return null;
+  }
+  return raw?.toJSON();
+};
+
+exports.updateReminder = async (id, params) => {
+  const reminder = await this.findReminderById(id);
+  if (!reminder) {
+    throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
+  }
+
   const v = new Validator(params, {
-    user: 'required',
-    schedule: 'required',
     title: 'required',
     message: 'required',
     repeat: 'required',
@@ -71,28 +95,42 @@ exports.updateReminder = async (params) => {
     throw HttpError(BAD_REQUEST_ERR_CODE, `${params?.schedule} is not a valid datetime`);
   }
 
-  // delete all pending reminder with the same title from the same user
-  await Reminders.deleteMany({
-    user: new ObjectId(params?.user),
-    title: params?.title,
+  // delete all pending reminder
+  await ScheduledReminders.deleteMany({
+    reminder: new ObjectId(reminder?.id),
     status: PENDING_REMINDER_STATUS,
   });
 
   const payload = {
     user: new ObjectId(params?.user),
-    schedule: new Date(params?.schedule),
     title: params?.title,
     message: params?.message,
     repeat: params?.repeat,
   };
 
-  const raw = await Reminders.create(sanitizeObject(payload));
+  await Reminders.findByIdAndUpdate(reminder?.id, {
+    $set: sanitizeObject(payload),
+  });
 
-  return raw?.toJSON();
+  await ScheduledReminders.create({
+    reminder: new ObjectId(reminder?.id),
+    schedule: new Date(params?.schedule),
+  });
+
+  return this.findReminderById(id);
 };
 
-exports.removeReminder = async (userId) => {
+exports.removeReminderByUserId = async (userId) => {
   // delete all reminder from the same user
+
+  const list = await Reminders.find({
+    user: new ObjectId(userId),
+  });
+
+  await Promise.all(list?.map((n) => ScheduledReminders.deleteMany({
+    reminder: new ObjectId(n?._id?.toString()),
+  })));
+
   await Reminders.deleteMany({
     user: new ObjectId(userId),
   });
@@ -100,8 +138,23 @@ exports.removeReminder = async (userId) => {
   return null;
 };
 
+exports.removeReminder = async (id) => {
+  // delete all reminder from the same user with the same title
+  const raw = await Reminders.findById(id);
+  if (!raw) {
+    throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
+  }
+
+  await Reminders.findByIdAndDelete(id);
+  await ScheduledReminders.deleteMany({
+    reminder: new ObjectId(id),
+  });
+
+  return null;
+};
+
 exports.processReminder = async () => {
-  const allPendingReminder = await Reminders.find({
+  const allPendingReminder = await ScheduledReminders.find({
     status: PENDING_REMINDER_STATUS,
     schedule: {
       $lte: new Date(),
@@ -109,14 +162,14 @@ exports.processReminder = async () => {
   });
 
   allPendingReminder?.map((n) => submitSendReminder({
-    reminderId: n?._id?.toString(),
+    scheduledReminderId: n?._id?.toString(),
   }));
 
   return null;
 };
 
 exports.sendReminder = async (id) => {
-  const raw = await Reminders.findById(id);
+  const raw = await ScheduledReminders.findById(id);
   if (!raw) {
     throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
   }
@@ -125,12 +178,14 @@ exports.sendReminder = async (id) => {
     throw HttpError(SERVICE_UNAVAILABLE_ERR_CODE, 'already sent');
   }
 
-  const user = await findUserById(raw?.user?.toString());
+  const reminder = await this.findReminderById(raw?.reminder?.toString());
+
+  const user = await findUserById(reminder?.user?.toString());
   if (!user) {
     throw HttpError(NOT_FOUND_ERR_CODE, 'User not found');
   }
 
-  let message = raw?.message;
+  let message = reminder?.message;
 
   Object.keys(user).forEach((k) => {
     message = message.replace(new RegExp(`{${k}}`, 'g'), user[k]);
@@ -141,7 +196,7 @@ exports.sendReminder = async (id) => {
     message,
   });
 
-  await Reminders.findByIdAndUpdate(raw?._id?.toString(), {
+  await ScheduledReminders.findByIdAndUpdate(raw?._id?.toString(), {
     $set: {
       status: SENT_REMINDER_STATUS,
     },
@@ -151,41 +206,37 @@ exports.sendReminder = async (id) => {
     return null;
   }
 
-  await this.repeatReminder(raw?.toJSON());
+  await this.repeatReminder(raw?.toJSON(), reminder);
 
   return null;
 };
 
-exports.repeatReminder = async (reminder) => {
+exports.repeatReminder = async (scheduledReminder, reminder) => {
   let schedule = null;
   switch (reminder?.repeat) {
     case ANNUAL_REMINDER_REPEAT:
-      schedule = moment(new Date()).add(1, 'year').toDate();
+      schedule = moment(new Date(scheduledReminder?.schedule)).add(1, 'year').toDate();
       break;
     case QUARTERLY_REMINDER_REPEAT:
-      schedule = moment(new Date()).add(1, 'quarter').toDate();
+      schedule = moment(new Date(scheduledReminder?.schedule)).add(1, 'quarter').toDate();
       break;
     case MONTHLY_REMINDER_REPEAT:
-      schedule = moment(new Date()).add(1, 'month').toDate();
+      schedule = moment(new Date(scheduledReminder?.schedule)).add(1, 'month').toDate();
       break;
     case WEEKLY_REMINDER_REPEAT:
-      schedule = moment(new Date()).add(1, 'week').toDate();
+      schedule = moment(new Date(scheduledReminder?.schedule)).add(1, 'week').toDate();
       break;
     case DAILY_REMINDER_REPEAT:
-      schedule = moment(new Date()).add(1, 'day').toDate();
+      schedule = moment(new Date(scheduledReminder?.schedule)).add(1, 'day').toDate();
       break;
     default:
       schedule = null;
   }
 
-  const payload = {
-    user: reminder?.user?.toString(),
+  await ScheduledReminders.create({
+    reminder: new ObjectId(reminder?.id),
     schedule,
-    title: reminder?.title,
-    message: reminder?.message,
-    repeat: reminder?.repeat,
-  };
-  await this.createReminder(payload);
+  });
 
   return null;
 };

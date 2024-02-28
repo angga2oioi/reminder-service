@@ -5,12 +5,12 @@ const amqp = require('amqplib/callback_api');
 const {
   CREATE_REMINDER_MQ_QUEUE,
   UPDATE_REMINDER_MQ_QUEUE,
-  REMOVE_REMINDER_MQ_QUEUE,
+  REMOVE_REMINDER_BY_USER_ID_MQ_QUEUE,
   PROCESS_REMINDER_MQ_QUEUE,
   SEND_REMINDER_MQ_QUEUE,
 } = require('reminder-service-utils/constant');
 const {
-  createReminder, updateReminder, removeReminder, sendReminder,
+  createReminder, updateReminder, removeReminderByUserId, sendReminder, processReminder,
 } = require('../service/reminder');
 
 amqp.connect(process.env.AMQP_HOST, (err, connection) => {
@@ -105,7 +105,7 @@ amqp.connect(process.env.AMQP_HOST, (err, connection) => {
 
     channel.prefetch(3);
     channel.assertQueue(
-      REMOVE_REMINDER_MQ_QUEUE,
+      REMOVE_REMINDER_BY_USER_ID_MQ_QUEUE,
       {
         durable: false,
       },
@@ -113,19 +113,19 @@ amqp.connect(process.env.AMQP_HOST, (err, connection) => {
 
     console.log(
       ' [*] Waiting for messages in %s',
-      REMOVE_REMINDER_MQ_QUEUE,
+      REMOVE_REMINDER_BY_USER_ID_MQ_QUEUE,
     );
     channel.consume(
-      REMOVE_REMINDER_MQ_QUEUE,
+      REMOVE_REMINDER_BY_USER_ID_MQ_QUEUE,
       async (msg) => {
         try {
           console.log(
             'new messages in %s',
-            REMOVE_REMINDER_MQ_QUEUE,
+            REMOVE_REMINDER_BY_USER_ID_MQ_QUEUE,
           );
 
           const { userId } = JSON.parse(msg.content.toString());
-          await removeReminder(userId);
+          await removeReminderByUserId(userId);
         } catch (e) {
           console.log(e);
         } finally {
@@ -163,7 +163,7 @@ amqp.connect(process.env.AMQP_HOST, (err, connection) => {
             'new messages in %s',
             PROCESS_REMINDER_MQ_QUEUE,
           );
-          await removeReminder();
+          await processReminder();
         } catch (e) {
           console.log(e);
         } finally {
@@ -200,8 +200,8 @@ amqp.connect(process.env.AMQP_HOST, (err, connection) => {
             'new messages in %s',
             SEND_REMINDER_MQ_QUEUE,
           );
-          const { reminderId } = JSON.parse(msg.content.toString());
-          await sendReminder(reminderId);
+          const { scheduledReminderId } = JSON.parse(msg.content.toString());
+          await sendReminder(scheduledReminderId);
         } catch (e) {
           console.log(e);
         } finally {

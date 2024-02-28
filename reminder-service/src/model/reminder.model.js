@@ -7,17 +7,12 @@ const {
 const mongoose = require('../provider/mongoose');
 const { toJSON, paginate } = require('./plugins');
 
-const { ObjectId, String, Date } = mongoose.Schema.Types;
+const { ObjectId, String } = mongoose.Schema.Types;
 
 const reminderSchema = new mongoose.Schema(
   {
     user: {
       type: ObjectId,
-      required: true,
-      index: true,
-    },
-    schedule: {
-      type: Date,
       required: true,
       index: true,
     },
@@ -41,18 +36,6 @@ const reminderSchema = new mongoose.Schema(
         ],
         message: '{VALUE} is not supported',
       },
-    },
-    status: {
-      type: String,
-      required: true,
-      index: true,
-      enum: {
-        values: [
-          SENT_REMINDER_STATUS, PENDING_REMINDER_STATUS,
-        ],
-        message: '{VALUE} is not supported',
-      },
-      default: PENDING_REMINDER_STATUS,
     },
   },
   {

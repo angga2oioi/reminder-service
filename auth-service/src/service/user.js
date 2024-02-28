@@ -6,7 +6,7 @@ const {
 } = require('reminder-service-utils/constant');
 const momentTz = require('moment-timezone');
 const { UserProfiles } = require('../model');
-const { submitCreateReminder, submitUpdateReminder, submitRemoveReminder } = require('../provider/rabbitmq.producer');
+const { submitCreateReminder, submitUpdateReminder, submitRemoveReminderByUserId } = require('../provider/rabbitmq.producer');
 const { createReminder } = require('../provider/reminder.service');
 
 exports.createReminderSchedule = async (date, timezone) => {
@@ -185,7 +185,7 @@ exports.removeUser = async (id) => {
 
   await UserProfiles.findByIdAndDelete(profile?.id);
 
-  submitRemoveReminder({
+  submitRemoveReminderByUserId({
     userId: profile?.id,
   });
 

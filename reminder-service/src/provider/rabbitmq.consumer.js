@@ -4,10 +4,12 @@
 const amqp = require('amqplib/callback_api');
 const {
   CREATE_REMINDER_MQ_QUEUE,
+  UPDATE_REMINDER_MQ_QUEUE,
+  REMOVE_REMINDER_MQ_QUEUE,
   PROCESS_REMINDER_MQ_QUEUE,
   SEND_REMINDER_MQ_QUEUE,
 } = require('reminder-service-utils/constant');
-const { createReminder } = require('../service/reminder');
+const { createReminder, updateReminder, removeReminder } = require('../service/reminder');
 
 amqp.connect(process.env.AMQP_HOST, (err, connection) => {
   if (err) {
@@ -42,6 +44,86 @@ amqp.connect(process.env.AMQP_HOST, (err, connection) => {
 
           const params = JSON.parse(msg.content.toString());
           await createReminder(params);
+        } catch (e) {
+          console.log(e);
+        } finally {
+          channel.ack(msg);
+        }
+      },
+      {
+        noAck: false,
+      },
+    );
+  });
+
+  connection.createChannel((err, channel) => {
+    if (err) {
+      throw err;
+    }
+
+    channel.prefetch(3);
+    channel.assertQueue(
+      UPDATE_REMINDER_MQ_QUEUE,
+      {
+        durable: false,
+      },
+    );
+
+    console.log(
+      ' [*] Waiting for messages in %s',
+      UPDATE_REMINDER_MQ_QUEUE,
+    );
+    channel.consume(
+      UPDATE_REMINDER_MQ_QUEUE,
+      async (msg) => {
+        try {
+          console.log(
+            'new messages in %s',
+            UPDATE_REMINDER_MQ_QUEUE,
+          );
+
+          const params = JSON.parse(msg.content.toString());
+          await updateReminder(params);
+        } catch (e) {
+          console.log(e);
+        } finally {
+          channel.ack(msg);
+        }
+      },
+      {
+        noAck: false,
+      },
+    );
+  });
+
+  connection.createChannel((err, channel) => {
+    if (err) {
+      throw err;
+    }
+
+    channel.prefetch(3);
+    channel.assertQueue(
+      REMOVE_REMINDER_MQ_QUEUE,
+      {
+        durable: false,
+      },
+    );
+
+    console.log(
+      ' [*] Waiting for messages in %s',
+      REMOVE_REMINDER_MQ_QUEUE,
+    );
+    channel.consume(
+      REMOVE_REMINDER_MQ_QUEUE,
+      async (msg) => {
+        try {
+          console.log(
+            'new messages in %s',
+            REMOVE_REMINDER_MQ_QUEUE,
+          );
+
+          const { userId } = JSON.parse(msg.content.toString());
+          await removeReminder(userId);
         } catch (e) {
           console.log(e);
         } finally {

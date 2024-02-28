@@ -84,8 +84,8 @@ amqp.connect(process.env.AMQP_HOST, (err, connection) => {
             UPDATE_REMINDER_MQ_QUEUE,
           );
 
-          const params = JSON.parse(msg.content.toString());
-          await updateReminder(params);
+          const { id, params } = JSON.parse(msg.content.toString());
+          await updateReminder(id, params);
         } catch (e) {
           console.log(e);
         } finally {

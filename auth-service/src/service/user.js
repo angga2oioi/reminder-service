@@ -1,8 +1,40 @@
 // @ts-check
 const { Validator } = require('node-input-validator');
 const { HttpError, sanitizeObject, sanitizeEmail } = require('reminder-service-utils/functions');
-const { BAD_REQUEST_ERR_CODE } = require('reminder-service-utils/constant');
+const {
+  BAD_REQUEST_ERR_CODE, NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE, ANNUAL_REMINDER_REPEAT,
+} = require('reminder-service-utils/constant');
+const momentTz = require('moment-timezone');
 const { UserProfiles } = require('../model');
+const { submiCreateReminder } = require('../provider/rabbitmq.producer');
+
+const createBirthdayReminder = async (id) => {
+  const profile = await this.findUserById(id);
+  if (!profile) {
+    throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
+  }
+
+  const local9AM = momentTz(new Date(profile?.dob)).format('YYYY-MM-DDT00:09:00');
+
+  const localDate = momentTz.tz(local9AM, profile?.location?.timezone);
+  // Convert the date to UTC
+  let utcDate = localDate.clone().tz('UTC').toDate();
+
+  // if date has passed
+  if (utcDate.getTime() < new Date().getTime()) {
+    utcDate = localDate.clone().tz('UTC').add(1, 'year').toDate();
+  }
+
+  const payload = {
+    user: profile?.id,
+    schedule: utcDate.toISOString(),
+    message: 'Hey, {firstName} {lastName} it\'s your birthday',
+    repeat: ANNUAL_REMINDER_REPEAT,
+  };
+
+  submiCreateReminder(sanitizeObject(payload));
+  return null;
+};
 
 exports.createUser = async (params) => {
   const v = new Validator(params, {
@@ -21,6 +53,11 @@ exports.createUser = async (params) => {
     throw HttpError(BAD_REQUEST_ERR_CODE, v.errors[Object.keys(v?.errors)[0]]?.message);
   }
 
+  // check if timezone is valid
+  if (!momentTz.tz.zone(params?.location?.timezone)) {
+    throw HttpError(BAD_REQUEST_ERR_CODE, `Invalid timezone ${params?.location?.timezone}`);
+  }
+
   const payload = {
     firstName: params?.firstName,
     lastName: params?.lastName,
@@ -33,7 +70,7 @@ exports.createUser = async (params) => {
     },
   };
   const raw = await UserProfiles.create(sanitizeObject(payload));
-  // submit create birthday reminder here
+  createBirthdayReminder(raw?._id?.toString());
   return raw?.toJSON();
 };
 

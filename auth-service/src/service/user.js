@@ -36,3 +36,12 @@ exports.createUser = async (params) => {
   // submit create birthday reminder here
   return raw?.toJSON();
 };
+
+exports.findUserById = async (id) => {
+  const raw = await UserProfiles.findById(id);
+  if (!raw) {
+    return null;
+  }
+
+  return raw?.toJSON();
+};

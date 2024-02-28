@@ -46,6 +46,7 @@ const reminderSchema = new mongoose.Schema(
         ],
         message: '{VALUE} is not supported',
       },
+      default: PENDING_REMINDER_STATUS,
     },
   },
   {

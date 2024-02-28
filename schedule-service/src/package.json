@@ -1,0 +1,24 @@
+{
+  "name": "schedule-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:production": "pm2 start processes.json --no-daemon",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "pm2": "^5.3.1",
+    "reminder-service-utils": "github:angga2oioi/reminder-service-utils"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.1"
+  }
+}

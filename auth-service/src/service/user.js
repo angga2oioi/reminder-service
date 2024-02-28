@@ -1,6 +1,6 @@
 // @ts-check
 const { Validator } = require('node-input-validator');
-const { HttpError, sanitizeObject } = require('reminder-service-utils/functions');
+const { HttpError, sanitizeObject, sanitizeEmail } = require('reminder-service-utils/functions');
 const { BAD_REQUEST_ERR_CODE } = require('reminder-service-utils/constant');
 const { UserProfiles } = require('../model');
 
@@ -8,6 +8,7 @@ exports.createUser = async (params) => {
   const v = new Validator(params, {
     firstName: 'required',
     lastName: 'required',
+    email: 'required',
     dob: 'required|date',
     location: 'required',
     'location.country': 'required',
@@ -24,6 +25,7 @@ exports.createUser = async (params) => {
     firstName: params?.firstName,
     lastName: params?.lastName,
     dob: new Date(params?.dob),
+    email: sanitizeEmail(params?.email),
     location: {
       country: params?.location?.country,
       city: params?.location?.city,

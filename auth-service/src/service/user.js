@@ -7,11 +7,12 @@ const {
 const momentTz = require('moment-timezone');
 const { UserProfiles } = require('../model');
 const { submitCreateReminder, submitUpdateReminder, submitRemoveReminder } = require('../provider/rabbitmq.producer');
+const { createReminder } = require('../provider/reminder.service');
 
-const createBirthdayReminderPayload = async (profile) => {
-  const local9AM = momentTz(new Date(profile?.dob)).format('YYYY-MM-DDT00:09:00');
+exports.createReminderSchedule = async (date, timezone) => {
+  const local9AM = momentTz(new Date(date)).format('YYYY-MM-DDT00:09:00');
 
-  const localDate = momentTz.tz(local9AM, profile?.location?.timezone);
+  const localDate = momentTz.tz(local9AM, timezone);
   // Convert the date to UTC
   let utcDate = localDate.clone().tz('UTC').toDate();
 
@@ -20,15 +21,7 @@ const createBirthdayReminderPayload = async (profile) => {
     utcDate = localDate.clone().tz('UTC').add(1, 'year').toDate();
   }
 
-  const payload = {
-    user: profile?.id,
-    schedule: utcDate.toISOString(),
-    title: 'Birthday Message',
-    message: 'Hey, {firstName} {lastName} it\'s your birthday',
-    repeat: ANNUAL_REMINDER_REPEAT,
-  };
-
-  return sanitizeObject(payload);
+  return utcDate.toISOString();
 };
 
 exports.createUser = async (params) => {
@@ -74,10 +67,18 @@ exports.createUser = async (params) => {
     const raw = await UserProfiles.create(sanitizeObject(payload));
     const profile = raw?.toJSON();
 
-    const reminder = createBirthdayReminderPayload(profile);
+    const schedule = this.createReminderSchedule(profile?.dob, profile?.location?.timezone);
+    const reminderPayload = {
+      user: profile?.id,
+      schedule,
+      title: 'Birthday Message',
+      message: 'Hey, {firstName} {lastName} it\'s your birthday',
+      repeat: ANNUAL_REMINDER_REPEAT,
+    };
+
     await session.commitTransaction();
 
-    submitCreateReminder(reminder);
+    submitCreateReminder(reminderPayload);
 
     return profile;
   } catch (e) {
@@ -150,10 +151,18 @@ exports.updateUser = async (id, params) => {
       throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
     }
 
-    const reminder = createBirthdayReminderPayload(updatedProfile);
+    const schedule = this.createReminderSchedule(updatedProfile?.dob, updatedProfile?.location?.timezone);
+    const reminderPayload = {
+      user: profile?.id,
+      schedule,
+      title: 'Birthday Message',
+      message: 'Hey, {firstName} {lastName} it\'s your birthday',
+      repeat: ANNUAL_REMINDER_REPEAT,
+    };
+
     await session.commitTransaction();
 
-    submitUpdateReminder(reminder);
+    submitUpdateReminder(reminderPayload);
 
     return updatedProfile;
   } catch (e) {
@@ -181,4 +190,36 @@ exports.removeUser = async (id) => {
   });
 
   return null;
+};
+
+exports.createUserReminder = async (params) => {
+  const v = new Validator(params, {
+    user: 'required',
+    schedule: 'required',
+    title: 'required',
+    message: 'required',
+    repeat: 'required',
+  });
+
+  const matched = await v.check();
+  if (!matched) {
+    throw HttpError(BAD_REQUEST_ERR_CODE, v.errors[Object.keys(v?.errors)[0]]?.message);
+  }
+
+  const profile = await this.findUserById(params?.user);
+  if (!profile) {
+    throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
+  }
+
+  const schedule = this.createReminderSchedule(params?.schedule, profile?.location?.timezone);
+
+  const reminderPayload = {
+    user: profile?.id,
+    schedule,
+    title: params?.title,
+    message: params?.message,
+    repeat: params?.repeat,
+  };
+
+  return createReminder(reminderPayload);
 };

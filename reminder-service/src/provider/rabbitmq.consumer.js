@@ -180,7 +180,7 @@ amqp.connect(process.env.AMQP_HOST, (err, connection) => {
       throw err;
     }
 
-    channel.prefetch(3);
+    channel.prefetch(1);
     channel.assertQueue(
       SEND_REMINDER_MQ_QUEUE,
       {

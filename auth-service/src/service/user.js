@@ -6,9 +6,9 @@ const {
 } = require('reminder-service-utils/constant');
 const momentTz = require('moment-timezone');
 const { UserProfiles } = require('../model');
-const { submiCreateReminder } = require('../provider/rabbitmq.producer');
+const { submitCreateReminder, submitUpdateReminder, submitRemoveReminder } = require('../provider/rabbitmq.producer');
 
-const createBirthdayReminder = async (profile) => {
+const createBirthdayReminderPayload = async (profile) => {
   const local9AM = momentTz(new Date(profile?.dob)).format('YYYY-MM-DDT00:09:00');
 
   const localDate = momentTz.tz(local9AM, profile?.location?.timezone);
@@ -23,12 +23,12 @@ const createBirthdayReminder = async (profile) => {
   const payload = {
     user: profile?.id,
     schedule: utcDate.toISOString(),
-    message: 'Hey, {firstName} {lastName} it\'s your birthday',
+    title: 'Birthday Message',
+    message: `Hey, ${profile?.firstName} ${profile?.lastName} it's your birthday`,
     repeat: ANNUAL_REMINDER_REPEAT,
   };
 
-  submiCreateReminder(sanitizeObject(payload));
-  return null;
+  return sanitizeObject(payload);
 };
 
 exports.createUser = async (params) => {
@@ -74,8 +74,10 @@ exports.createUser = async (params) => {
     const raw = await UserProfiles.create(sanitizeObject(payload));
     const profile = raw?.toJSON();
 
-    createBirthdayReminder(profile);
+    const reminder = createBirthdayReminderPayload(profile);
     await session.commitTransaction();
+
+    submitCreateReminder(reminder);
 
     return profile;
   } catch (e) {
@@ -97,4 +99,86 @@ exports.findUserById = async (id) => {
   }
 
   return raw?.toJSON();
+};
+
+exports.updateUser = async (id, params) => {
+  const profile = await this.findUserById(id);
+  if (!profile) {
+    throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
+  }
+
+  const v = new Validator(params, {
+    firstName: 'required',
+    lastName: 'required',
+    email: 'required',
+    dob: 'required|date',
+    location: 'required',
+    'location.country': 'required',
+    'location.city': 'required',
+    'location.timezone': 'required',
+  });
+
+  const matched = await v.check();
+  if (!matched) {
+    throw HttpError(BAD_REQUEST_ERR_CODE, v.errors[Object.keys(v?.errors)[0]]?.message);
+  }
+
+  const payload = {
+    firstName: params?.firstName,
+    lastName: params?.lastName,
+    dob: new Date(params?.dob),
+    email: sanitizeEmail(params?.email),
+    location: {
+      country: params?.location?.country,
+      city: params?.location?.city,
+      timezone: params?.location?.timezone,
+    },
+  };
+
+  let session = null;
+
+  try {
+    session = await UserProfiles.startSession();
+    session.startTransaction();
+
+    await UserProfiles.findByIdAndUpdate(profile?.id, {
+      $set: sanitizeObject(payload),
+    });
+
+    const updatedProfile = await this.findUserById(id);
+    if (!updatedProfile) {
+      throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
+    }
+
+    const reminder = createBirthdayReminderPayload(updatedProfile);
+    await session.commitTransaction();
+
+    submitUpdateReminder(reminder);
+
+    return updatedProfile;
+  } catch (e) {
+    if (session) {
+      session.abortTransaction();
+    }
+    throw e;
+  } finally {
+    if (session) {
+      await session.endSession();
+    }
+  }
+};
+
+exports.removeUser = async (id) => {
+  const profile = await this.findUserById(id);
+  if (!profile) {
+    throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
+  }
+
+  await UserProfiles.findByIdAndDelete(profile?.id);
+
+  submitRemoveReminder({
+    userId: profile?.id,
+  });
+
+  return null;
 };

@@ -1,6 +1,7 @@
 // @ts-check
 const {
   ANNUAL_REMINDER_REPEAT, QUARTERLY_REMINDER_REPEAT, MONTHLY_REMINDER_REPEAT, WEEKLY_REMINDER_REPEAT, DAILY_REMINDER_REPEAT,
+  NONE_REMINDER_REPEAT,
   SENT_REMINDER_STATUS, PENDING_REMINDER_STATUS,
 } = require('reminder-service-utils/constant');
 const mongoose = require('../provider/mongoose');
@@ -20,6 +21,11 @@ const reminderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    title: {
+      type: String,
+      required: true,
+      index: true,
+    },
     message: {
       type: String,
       required: true,
@@ -31,7 +37,7 @@ const reminderSchema = new mongoose.Schema(
       index: true,
       enum: {
         values: [
-          ANNUAL_REMINDER_REPEAT, QUARTERLY_REMINDER_REPEAT, MONTHLY_REMINDER_REPEAT, WEEKLY_REMINDER_REPEAT, DAILY_REMINDER_REPEAT,
+          ANNUAL_REMINDER_REPEAT, QUARTERLY_REMINDER_REPEAT, MONTHLY_REMINDER_REPEAT, WEEKLY_REMINDER_REPEAT, DAILY_REMINDER_REPEAT, NONE_REMINDER_REPEAT,
         ],
         message: '{VALUE} is not supported',
       },

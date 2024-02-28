@@ -11,6 +11,7 @@ exports.createReminder = async (params) => {
   const v = new Validator(params, {
     user: 'required',
     schedule: 'required',
+    title: 'required',
     message: 'required',
     repeat: 'required',
   });
@@ -32,6 +33,7 @@ exports.createReminder = async (params) => {
   const payload = {
     user: new ObjectId(params?.user),
     schedule: new Date(params?.schedule),
+    title: params?.title,
     message: params?.message,
     repeat: params?.repeat,
   };

@@ -189,3 +189,45 @@ exports.repeatReminder = async (reminder) => {
 
   return null;
 };
+
+const buildReminderSearchQuery = (params) => {
+  const query = {};
+  if (params?.search) {
+    query.$or = [
+      {
+        title: {
+          $regex: params?.search,
+          $options: 'i',
+        },
+      },
+      {
+        title: {
+          $regex: params?.message,
+          $options: 'i',
+        },
+      },
+    ];
+  }
+
+  if (params?.user) {
+    query.user = new ObjectId(params?.user);
+  }
+
+  if (params?.status) {
+    query.status = params?.status;
+  }
+
+  if (params?.repeat) {
+    query.repeat = params?.repeat;
+  }
+
+  return query;
+};
+
+exports.paginateReminder = async (params, sortBy = 'createdAt:desc', limit = 10, page = 1) => {
+  const query = buildReminderSearchQuery(params);
+
+  const list = await Reminders.paginate(query, { sortBy, limit, page });
+  list.results = list?.results?.map((n) => n?.toJSON());
+  return list;
+};

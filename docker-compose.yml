@@ -6,12 +6,11 @@ services:
     container_name: auth_service
     build:
       context: ./auth-service
+    ports:
+      - "5001:5001"
     depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbit_mq:
+      gateway_service:
         condition: service_started
-    network_mode: "host"
     logging:
         driver: "json-file"
         options:
@@ -22,12 +21,11 @@ services:
     container_name: reminder_service
     build:
       context: ./reminder-service
+    ports:
+      - "5002:5002"
     depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbit_mq:
+      auth_service:
         condition: service_started
-    network_mode: "host"
     logging:
         driver: "json-file"
         options:
@@ -39,11 +37,8 @@ services:
     build:
       context: ./schedule-service
     depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbit_mq:
+      reminder_service:
         condition: service_started
-    network_mode: "host"
     logging:
         driver: "json-file"
         options:
@@ -54,14 +49,26 @@ services:
     container_name: gateway_service
     build:
       context: ./gateway-service
-    network_mode: "host"
+    depends_on:
+      mongodb:
+        condition: service_started
+      rabbit_mq:
+        condition: service_started
+    ports:
+      - "5000:5000"  # Map container port 5000 to host port 5000
     logging:
-        driver: "json-file"
-        options:
-            max-file: "5"
-            max-size: "1m"
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "1m"
 
   rabbit_mq:
     image: rabbitmq:3.9-management
+    ports:
+      - "5672:5672"
+    
   mongodb:
     image: mongo:4.4.10
+    ports:
+      - "27017:27017"
+    

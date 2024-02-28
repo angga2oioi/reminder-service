@@ -11,14 +11,14 @@ const init = () => {
   ws = new WebSocket(process.env.REMINDER_WSHOST, { max_reconnects: 0 });
 
   ws.on('open', () => {
-    console.log('ws to auth is connected');
+    console.log('ws to reminder is connected');
     isWSOpen = true;
   });
   ws.on('error', (e) => {
-    console.log('ws to auth error, reconnecting', e.message);
+    console.log('ws to reminder error, reconnecting', e.message);
   });
   ws.on('close', (e) => {
-    console.log('ws to auth close, reconnecting', e.message);
+    console.log('ws to reminder close, reconnecting', e.message);
   });
 };
 

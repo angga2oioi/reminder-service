@@ -90,3 +90,4 @@ function onListening() {
 }
 
 require('../provider/rabbitmq.consumer');
+require('../provider/rpc.route');

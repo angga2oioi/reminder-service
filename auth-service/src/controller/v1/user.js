@@ -2,7 +2,7 @@
 const {
   SUCCESS_ERR_CODE, SUCCESS_ERR_MESSAGE,
 } = require('reminder-service-utils/constant');
-const { parseError } = require('reminder-service-utils/function');
+const { parseError } = require('reminder-service-utils/functions');
 const {
   createUser, updateUser, removeUser, createUserReminder,
 } = require('../../service/user');

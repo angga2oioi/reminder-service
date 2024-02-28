@@ -1,7 +1,11 @@
-FROM node:lts-alpine
+FROM node:alpine
 RUN mkdir -p /opt/app
 WORKDIR /opt/app
+RUN adduser --system app
+RUN apk add --no-cache git
 COPY src/ .
 RUN npm install
 USER app
+EXPOSE 5002
+EXPOSE 6002
 CMD [ "npm", "run", "start:production" ]

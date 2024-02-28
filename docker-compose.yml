@@ -6,6 +6,11 @@ services:
     container_name: auth_service
     build:
       context: ./auth-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbit_mq:
+        condition: service_started
     network_mode: "host"
     logging:
         driver: "json-file"
@@ -17,6 +22,11 @@ services:
     container_name: reminder_service
     build:
       context: ./reminder-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbit_mq:
+        condition: service_started
     network_mode: "host"
     logging:
         driver: "json-file"
@@ -28,6 +38,11 @@ services:
     container_name: schedule_service
     build:
       context: ./schedule-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbit_mq:
+        condition: service_started
     network_mode: "host"
     logging:
         driver: "json-file"
@@ -35,3 +50,7 @@ services:
             max-file: "5"
             max-size: "1m"
 
+  rabbit_mq:
+    image: rabbitmq:3.9-management
+  mongodb:
+    image: mongo:4.4.10

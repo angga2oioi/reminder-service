@@ -1,0 +1,9 @@
+FROM node:lts-alpine
+RUN mkdir -p /opt/app
+WORKDIR /opt/app
+COPY src/ .
+RUN npm install
+USER app
+EXPOSE 5001
+EXPOSE 6001
+CMD [ "npm", "run", "start:production" ]

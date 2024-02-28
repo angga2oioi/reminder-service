@@ -8,12 +8,7 @@ const momentTz = require('moment-timezone');
 const { UserProfiles } = require('../model');
 const { submiCreateReminder } = require('../provider/rabbitmq.producer');
 
-const createBirthdayReminder = async (id) => {
-  const profile = await this.findUserById(id);
-  if (!profile) {
-    throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
-  }
-
+const createBirthdayReminder = async (profile) => {
   const local9AM = momentTz(new Date(profile?.dob)).format('YYYY-MM-DDT00:09:00');
 
   const localDate = momentTz.tz(local9AM, profile?.location?.timezone);
@@ -69,9 +64,30 @@ exports.createUser = async (params) => {
       timezone: params?.location?.timezone,
     },
   };
-  const raw = await UserProfiles.create(sanitizeObject(payload));
-  createBirthdayReminder(raw?._id?.toString());
-  return raw?.toJSON();
+
+  let session = null;
+
+  try {
+    session = await UserProfiles.startSession();
+    session.startTransaction();
+
+    const raw = await UserProfiles.create(sanitizeObject(payload));
+    const profile = raw?.toJSON();
+
+    createBirthdayReminder(profile);
+    await session.commitTransaction();
+
+    return profile;
+  } catch (e) {
+    if (session) {
+      session.abortTransaction();
+    }
+    throw e;
+  } finally {
+    if (session) {
+      await session.endSession();
+    }
+  }
 };
 
 exports.findUserById = async (id) => {

@@ -24,7 +24,7 @@ const createBirthdayReminderPayload = async (profile) => {
     user: profile?.id,
     schedule: utcDate.toISOString(),
     title: 'Birthday Message',
-    message: `Hey, ${profile?.firstName} ${profile?.lastName} it's your birthday`,
+    message: 'Hey, {firstName} {lastName} it\'s your birthday',
     repeat: ANNUAL_REMINDER_REPEAT,
   };
 

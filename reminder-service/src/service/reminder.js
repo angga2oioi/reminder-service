@@ -10,7 +10,7 @@ const { Reminders, ScheduledReminders } = require('../model');
 const { submitSendReminder } = require('../provider/rabbitmq.producer');
 const { sendEmail } = require('../provider/mailer');
 
-const { ObjectId } = mongoose.Schema.Types;
+const { ObjectId } = mongoose.Types;
 
 exports.createReminder = async (params) => {
   const v = new Validator(params, {

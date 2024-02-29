@@ -9,7 +9,9 @@ services:
     ports:
       - "5001:5001"
     depends_on:
-      gateway_service:
+      mongodb:
+        condition: service_started
+      rabbit_mq:
         condition: service_started
     logging:
         driver: "json-file"
@@ -37,7 +39,7 @@ services:
     build:
       context: ./schedule-service
     depends_on:
-      reminder_service:
+      auth_service:
         condition: service_started
     logging:
         driver: "json-file"
@@ -50,9 +52,9 @@ services:
     build:
       context: ./gateway-service
     depends_on:
-      mongodb:
+      auth_service:
         condition: service_started
-      rabbit_mq:
+      reminder_service:
         condition: service_started
     ports:
       - "5000:5000"  # Map container port 5000 to host port 5000

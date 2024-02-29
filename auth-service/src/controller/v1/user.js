@@ -20,7 +20,7 @@ module.exports = {
       });
     } catch (e) {
       console.log(e);
-      res.status(e?.error).json(parseError(e));
+      res.status(e?.error || 500).json(parseError(e));
     }
   },
   async UserUpdate(req, res) {
@@ -33,7 +33,7 @@ module.exports = {
       });
     } catch (e) {
       console.log(e);
-      res.status(e?.error).json(parseError(e));
+      res.status(e?.error || 500).json(parseError(e));
     }
   },
   async UserRemove(req, res) {
@@ -45,7 +45,7 @@ module.exports = {
       });
     } catch (e) {
       console.log(e);
-      res.status(e?.error).json(parseError(e));
+      res.status(e?.error || 500).json(parseError(e));
     }
   },
   async UserPaginateReminder(req, res) {
@@ -73,7 +73,7 @@ module.exports = {
       });
     } catch (e) {
       console.log(e);
-      res.status(e?.error).json(parseError(e));
+      res.status(e?.error || 500).json(parseError(e));
     }
   },
   async UserCreateReminder(req, res) {
@@ -90,7 +90,7 @@ module.exports = {
       });
     } catch (e) {
       console.log(e);
-      res.status(e?.error).json(parseError(e));
+      res.status(e?.error || 500).json(parseError(e));
     }
   },
 };

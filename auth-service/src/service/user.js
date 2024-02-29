@@ -12,7 +12,7 @@ const { createReminder, findReminderByTitle } = require('../provider/reminder.se
 const BIRTHDAY_MESSAGE_TITLE = 'Birthday Message';
 const BIRTHDAY_MESSAGE = 'Hey, {firstName} {lastName} it\'s your birthday';
 
-exports.getNextBirthdaySchedule = async (dateOfBirth, timezone) => {
+exports.getNextBirthdaySchedule = (dateOfBirth, timezone) => {
   const birthDate = new Date(dateOfBirth);
   const currentYear = new Date().getFullYear();
   const birthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
@@ -53,11 +53,21 @@ exports.createUser = async (params) => {
     throw HttpError(BAD_REQUEST_ERR_CODE, `Invalid timezone ${params?.location?.timezone}`);
   }
 
+  const email = sanitizeEmail(params?.email);
+
+  const testUser = await UserProfiles.findOne({
+    email,
+  });
+
+  if (testUser) {
+    return testUser?.toJSON();
+  }
+
   const payload = {
     firstName: params?.firstName,
     lastName: params?.lastName,
     dob: new Date(params?.dob),
-    email: sanitizeEmail(params?.email),
+    email,
     location: {
       country: params?.location?.country,
       city: params?.location?.city,
@@ -222,7 +232,7 @@ exports.createUserReminder = async (params) => {
     throw HttpError(NOT_FOUND_ERR_CODE, NOT_FOUND_ERR_MESSAGE);
   }
 
-  const localDate = moment.tz(params?.schedule, profile?.location?.timezone);
+  const localDate = moment.tz(new Date(params?.schedule), profile?.location?.timezone);
   const utcDate = localDate.clone().tz('UTC').toDate();
 
   const reminderPayload = {

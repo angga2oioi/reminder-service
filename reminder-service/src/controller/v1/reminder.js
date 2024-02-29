@@ -17,7 +17,7 @@ module.exports = {
       });
     } catch (e) {
       console.log(e);
-      res.status(e?.error).json(parseError(e));
+      res.status(e?.error || 500).json(parseError(e));
     }
   },
 };

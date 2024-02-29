@@ -5,6 +5,7 @@ This is a simple app designed to create and manage scheduled messages. with an a
 
 ## Installation
 - Ensure that you have Docker installed on your system.
+- Rename all the .env.example files to .env
 - Run `docker-compose up -d`.
 - The server will be accessible at `localhost:5000`.
 ## Testing

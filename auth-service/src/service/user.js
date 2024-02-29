@@ -60,7 +60,7 @@ exports.createUser = async (params) => {
   });
 
   if (testUser) {
-    return testUser?.toJSON();
+    throw HttpError(BAD_REQUEST_ERR_CODE, `${params?.email} already registered`);
   }
 
   const payload = {

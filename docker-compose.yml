@@ -6,8 +6,6 @@ services:
     container_name: auth_service
     build:
       context: ./auth-service
-    ports:
-      - "5001:5001"
     depends_on:
       mongodb:
         condition: service_started
@@ -23,8 +21,6 @@ services:
     container_name: reminder_service
     build:
       context: ./reminder-service
-    ports:
-      - "5002:5002"
     depends_on:
       auth_service:
         condition: service_started
@@ -66,11 +62,7 @@ services:
 
   rabbit_mq:
     image: rabbitmq:3.9-management
-    ports:
-      - "5672:5672"
     
   mongodb:
     image: mongo:4.4.10
-    ports:
-      - "27017:27017"
     

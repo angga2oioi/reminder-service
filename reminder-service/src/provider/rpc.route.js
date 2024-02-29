@@ -25,30 +25,12 @@ const { paginateReminder, createReminder, findReminderByTitle } = require('../se
 
 wsServer.register(PAGINATE_REMINDER_RPC_ROUTE, async ({
   query, sortBy, limit, page,
-}) => {
-  try {
-    return await paginateReminder(query, sortBy, limit, page);
-  } catch (e) {
-    return null;
-  }
-});
+}) => paginateReminder(query, sortBy, limit, page));
 
 wsServer.register(CREATE_REMINDER_RPC_ROUTE, async ({
   params,
-}) => {
-  try {
-    return await createReminder(params);
-  } catch (e) {
-    return null;
-  }
-});
+}) => createReminder(params));
 
 wsServer.register(FIND_REMINDER_BY_TITLE_RPC_ROUTE, async ({
   title, userId,
-}) => {
-  try {
-    return await findReminderByTitle(title, userId);
-  } catch (e) {
-    return null;
-  }
-});
+}) => findReminderByTitle(title, userId));

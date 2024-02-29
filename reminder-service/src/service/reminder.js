@@ -98,7 +98,7 @@ exports.updateReminder = async (id, params) => {
     throw HttpError(BAD_REQUEST_ERR_CODE, v.errors[Object.keys(v?.errors)[0]]?.message);
   }
 
-  const user = await findUserById(params?.user);
+  const user = await findUserById(reminder?.user?.toString());
   if (!user) {
     throw HttpError(BAD_REQUEST_ERR_CODE, 'user not found');
   }
@@ -114,7 +114,7 @@ exports.updateReminder = async (id, params) => {
   });
 
   const payload = {
-    user: new ObjectId(params?.user),
+    user: new ObjectId(reminder?.user),
     title: params?.title,
     message: params?.message,
     repeat: params?.repeat,
@@ -285,6 +285,7 @@ const buildReminderSearchQuery = (params) => {
 
 exports.paginateReminder = async (params, sortBy = 'createdAt:desc', limit = 10, page = 1) => {
   const query = buildReminderSearchQuery(params);
+
   const sort = parseSortBy(sortBy);
 
   const aggregate = Reminders.aggregate([

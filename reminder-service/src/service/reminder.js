@@ -245,6 +245,10 @@ exports.repeatReminder = async (scheduledReminder, reminder) => {
       schedule = null;
   }
 
+  if (!schedule) {
+    return null;
+  }
+
   await ScheduledReminders.create({
     reminder: new ObjectId(reminder?.id),
     schedule,

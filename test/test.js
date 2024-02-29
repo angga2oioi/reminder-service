@@ -60,7 +60,10 @@ describe('User API', () => {
     it('should get reminders for the user', async () => {
       const res = await chai.request(host)
         .get(`/v1/users/${userId}/reminders`);
-      expect(res).to.have.status(200);
+        expect(res).to.have.status(200);
+        expect(res.body).to.have.property('data');
+        expect(res.body.data).to.have.property('results');
+        expect(res.body.data.results).to.have.length.above(0);
       // Add assertions for the response body as needed
     });
   });
